@@ -50,6 +50,14 @@ La dificultad del problema matemático que tienen que resolver los mineros se aj
 
 ### Blockchain
 
+Cada bloque contiene en su metadata una referencia al bloque inmediatamente anterior sobre el que fue construido, su **padre**. De esta manera, al encadenarse los bloques, se crea un orden cronológico de bloques, y por lo tanto, de las transacciones que contienen.
+
+Este sistema en donde cada bloque apunta a su padre, genera un árbol dirigido de bloques. A la raíz del árbol, es decir el primer bloque jamás emitido, se lo llama **bloque génesis**.
+
+La **blockchain** se define como la cadena más larga de bloques conectados entre sí, que termina en el bloque génesis.
+
+### Bifurcación de la blockchain
+
 WORK IN PROGRESS!
 
 # Generación del grafo de la red Bitcoin
