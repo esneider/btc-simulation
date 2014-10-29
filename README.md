@@ -54,7 +54,11 @@ Cada bloque contiene en su metadata una referencia al bloque inmediatamente ante
 
 Este sistema en donde cada bloque apunta a su padre, genera un árbol dirigido de bloques. A la raíz del árbol, es decir el primer bloque jamás emitido, se lo llama **bloque génesis**.
 
-La **blockchain** se define como la cadena más larga de bloques conectados entre sí, que termina en el bloque génesis.
+La **blockchain** se define como la cadena más larga de bloques conectados entre sí, que termina en el bloque génesis. Al primer bloque de esta cadena, se lo llama **cabeza** de la blockchain.
+
+![](https://github.com/esneider/btc-simulation/raw/master/images/blockchain.png)
+
+Una transacción se considera válida y confirmada si aparece en algún bloque de la blockchain. Por lo tanto, al crear un bloque, un minero recibirá sus bitcoins minados sólo si este bloque pertenece a la blockchain, es decir, a la cadena más larga. En consecuencia, al minero siempre le convendrá construir sus bloques con el bloque cabeza como padre.
 
 ### Bifurcación de la blockchain
 
