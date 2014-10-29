@@ -1,10 +1,8 @@
-[[TOC]]
-
 # Marco teórico
 
 ## Qué es bitcoin
 
-Bitcoin es una moneda digital global con la que se pueden realizar transacciones sin la necesidad de una entidad central (ej. banco central) que la coordine. (NOTE:  Nakamoto, Satoshi. Bitcoin: A Peer-to-Peer Electronic Cash System. https://bitcoin.org/bitcoin.pdf, 2008)
+Bitcoin es una moneda digital global con la que se pueden realizar transacciones sin la necesidad de una entidad central (ej. banco central) que la coordine. [1]
 
 Esta moneda tiene propiedades similares al efectivo, permitiendo transacciones casi instantáneas y no reembolsables. Pero logra esto sin hacer distinciones entre distancias: es lo mismo realizar un pago a alguien que está parado en frente mío, que a alguien que esta en otro continente.
 
@@ -22,7 +20,7 @@ Cada nodo de la red guarda una réplica completa del ledger. Es crucial que esta
 
 ### Nodo
 
-Cada nodo tiene una lista de **vecinos** con los que se comunica, que es un subconjunto cuasi-aleatorio (NOTE:  bitcoind peer discovery algorithms. https://en.bitcoin.it/wiki/Satoshi_Client_Node_Discovery) del resto de los nodos. Los nodos son los encargados de verificar los bloques y las transacciones, y transmitirlos al resto de la red: cada nodo reenvía los bloques y transacciones a todos sus vecinos.
+Cada nodo tiene una lista de **vecinos** con los que se comunica, que es un subconjunto cuasi-aleatorio [2] del resto de los nodos. Los nodos son los encargados de verificar los bloques y las transacciones, y transmitirlos al resto de la red: cada nodo reenvía los bloques y transacciones a todos sus vecinos.
 
 Existen nodos distinguidos llamados nodos **mineros**. Estos nodos son los encargados de crear nuevos bloques.
 
@@ -44,19 +42,29 @@ Para evitar estos problemas, todas las réplicas del ledger deben ser consistent
 
 WORK IN PROGRESS!
 
-## Generación del grafo de la red Bitcoin
+# Generación del grafo de la red Bitcoin
 
 Parámetros de la simulación:
 
-* Número de nodos (6724 as of today (NOTE:  https://getaddr.bitnodes.io/))
+* Número de nodos (6724 as of today [3])
 
 Variables aleatorias:
 
-* Por cada nodo, cantidad de conexiones (distribución a determinar (NOTE:  El máximo (default) es 125: bitcoind --help | grep maxconnections.))
+* Por cada nodo, cantidad de conexiones (distribución a determinar [4])
 
 * Por cada nodo, lista de conexiones (distribución uniforme)
 
 * Por cada conexión, latencia (distribución a determinar)
 
 * Por cada conexión, bandwidth (distribución a determinar)
+
+
+
+[1]  Nakamoto, Satoshi. Bitcoin: A Peer-to-Peer Electronic Cash System. https://bitcoin.org/bitcoin.pdf, 2008
+
+[2]  bitcoind peer discovery algorithms. https://en.bitcoin.it/wiki/Satoshi_Client_Node_Discovery
+
+[3]  https://getaddr.bitnodes.io/
+
+[4]  El máximo (default) es 125: bitcoind --help | grep maxconnections.
 
