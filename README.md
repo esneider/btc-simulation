@@ -38,7 +38,17 @@ A lo largo del tiempo, las réplicas del ledger en diferentes nodos pueden hacer
 
 ### Bloques
 
-Para evitar estos problemas, todas las réplicas del ledger deben ser consistentes. Es decir, los nodos tienen que estar de acuerdo en un orden total sobre todas las transacciones. Para lograr esto, cada nodo intenta
+Para evitar estos problemas, todas las réplicas del ledger deben ser consistentes. Es decir, los nodos tienen que estar de acuerdo en el orden de todas las transacciones.
+
+Para lograrlo, cada nodo minero intenta construir un bloque con las transacciones válidas que todavía no fueron confirmadas. Un bloque contiene una lista de transacciones, metadata, y un número llamado **nonce**. Para que el bloque sea válido, el minero debe encontrar un valor del nonce que cumpla con cierta propiedad matemática. Este proceso es conocido como **minado de bitcoins**: cada nuevo bloque tiene una transacción especial que crea bitcoins, y se los asigna al minero.
+
+Una vez que un minero logra construir un bloque válido, lo envía a sus vecinos. Al recibir un nuevo bloque, cada nodo lo verifica y reenvía al resto de la red. Si el nodo es minero, borra todas las transacciones incluidas en el nuevo bloque de su lista de transacciones no confirmadas, y empieza a trabajar en el próximo bloque.
+
+En este momento, todos los nodos están de acuerdo en la validez de las transacciones del nuevo bloque. Se dice que estas transacciones han sido **confirmadas**.
+
+La dificultad del problema matemático que tienen que resolver los mineros se ajusta automáticamente para que, en promedio, se cree un bloque cada 10 minutos.
+
+### Blockchain
 
 WORK IN PROGRESS!
 
