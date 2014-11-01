@@ -1,8 +1,8 @@
 # Marco teórico
 
-## Qué es bitcoin
+## Qué es Bitcoin
 
-Bitcoin es una moneda digital global con la que se pueden realizar transacciones sin la necesidad de una entidad central (ej. banco central) que la coordine. [1]
+Bitcoin es una moneda digital global con la que se pueden realizar transacciones sin la necesidad de una entidad central (ej. banco central) que la coordine.
 
 Esta moneda tiene propiedades similares al efectivo, permitiendo transacciones casi instantáneas y no reembolsables. Pero logra esto sin hacer distinciones entre distancias: es lo mismo realizar un pago a alguien que está parado en frente mío, que a alguien que esta en otro continente.
 
@@ -10,9 +10,9 @@ También comparte aspectos con el oro, al ser un recurso finito y escaso. Los bi
 
 Este conjunto de propiedades únicas introduce varias aplicaciones innovadores como propiedades inteligentes, micropagos, etc.
 
-## Cómo funciona bitcoin
+## Cómo funciona Bitcoin
 
-Tanto la generación de nuevos bitcoins, como el procesamiento y verificación de transacciones es llevado a cabo por la red de bitcoin. Esta red mantiene colectivamente un registro contable (**ledger**) con el balance de todas las cuentas del sistema.
+Tanto la generación de nuevos bitcoins, como el procesamiento y verificación de transacciones es llevado a cabo por la red de Bitcoin. Esta red mantiene colectivamente un registro contable (**ledger**) con el balance de todas las cuentas del sistema.
 
 La red bitcoin es una red p2p en la cual cada participante es un **nodo** de la red. Por esta red se transmiten dos tipos de información: **transacciones** y **bloques**. Las transacciones permiten transferir bitcoins entre cuentas, y los bloques son usados para sincronizar el estado a través de todos los nodos de la red.
 
@@ -20,7 +20,7 @@ Cada nodo de la red guarda una réplica completa del ledger. Es crucial que esta
 
 ### Nodo
 
-Cada nodo tiene una lista de **vecinos** con los que se comunica, que es un subconjunto cuasi-aleatorio [2] del resto de los nodos. Los nodos son los encargados de verificar los bloques y las transacciones, y transmitirlos al resto de la red: cada nodo reenvía los bloques y transacciones a todos sus vecinos.
+Cada participante de la red de Bitcoin es llamado nodo, y tiene una lista de **vecinos** con los que se comunica. Los nodos son los encargados de verificar los bloques y las transacciones, y transmitirlos al resto de la red: cada nodo reenvía los bloques y transacciones a todos sus vecinos.
 
 Existen nodos distinguidos llamados nodos **mineros**. Estos nodos son los encargados de crear nuevos bloques.
 
@@ -52,41 +52,29 @@ La dificultad del problema matemático que tienen que resolver los mineros se aj
 
 Cada bloque contiene en su metadata una referencia al bloque inmediatamente anterior sobre el que fue construido, su **padre**. De esta manera, al encadenarse los bloques, se crea un orden cronológico de bloques, y por lo tanto, de las transacciones que contienen.
 
-Este sistema en donde cada bloque apunta a su padre, genera un árbol dirigido de bloques. A la raíz del árbol, es decir el primer bloque jamás emitido, se lo llama **bloque génesis**.
+Este sistema en donde cada bloque apunta a su padre, genera un árbol dirigido de bloques. A la raíz del árbol, es decir el primer bloque jamás emitido, se lo llama **bloque génesis**. La **altura** de un bloque es su distancia al bloque génesis.
 
 La **blockchain** se define como la cadena más larga de bloques conectados entre sí, que termina en el bloque génesis. Al primer bloque de esta cadena, se lo llama **cabeza** de la blockchain.
 
 ![](https://github.com/esneider/btc-simulation/raw/master/images/blockchain.png)
 
-Una transacción se considera válida y confirmada si aparece en algún bloque de la blockchain. Por lo tanto, al crear un bloque, un minero recibirá sus bitcoins minados sólo si este bloque pertenece a la blockchain, es decir, a la cadena más larga. En consecuencia, al minero siempre le convendrá construir sus bloques con el bloque cabeza como padre.
+La blockchain forma un registro de todas las transacciones desde la creación de Bitcoin hasta el presente, es decir, el llamado ledger. Una transacción se considera válida y confirmada si aparece en algún bloque de la blockchain.
+
+Al crear un bloque, un minero recibirá sus bitcoins minados sólo si este bloque pertenece a la cadena más larga, la blockchain. Por lo tanto al minero siempre le convendrá construir sus bloques con el bloque cabeza como padre (hay algunas excepciones a esto, como selfish mining [1] y freeze attack [2]).
 
 ### Bifurcación de la blockchain
 
-WORK IN PROGRESS!
+Los mensajes entre nodos de la red de Bitcoin se transmiten tan rápido como las conexiones de Internet entre ellos lo permiten. Dado que los bloques son encontrados al azar independientemente por los nodos mineros, puede llegar a encontrarse un bloque mientras otro bloque en conflicto está siendo propagado por la red.
 
-# Generación del grafo de la red Bitcoin
+Como ambos bloques son válidos y tienen la misma altura, ambos son potenciales cabezas de la blockchain, y esta se bifurca: una parte de los nodos tendrá como cabeza de la blockchain a este nuevo nodo, mientras que el resto de los nodos tendrá como cabeza al primer bloque. En consecuencia, diferentes nodos ven diferentes historias, y el sistema deja de ser consistente.
 
-Parámetros de la simulación:
+La bifurcación puede prolongarse si las particiones de la red siguen encontrando bloques que construyen sobre sus respectivas cabezas de blockchain, formando dos (o más) ramas. Pero eventualmente alguna de las ramas será más larga que el resto y se resolverá la bifurcación, ya que cuando un nodo recibe un nuevo bloque y su altura es mayor a todos los bloques previos, lo tomará como la nueva cabeza de la blockchain.
 
-* Número de nodos (6724 as of today [3])
-
-Variables aleatorias:
-
-* Por cada nodo, cantidad de conexiones (distribución a determinar [4])
-
-* Por cada nodo, lista de conexiones (distribución uniforme)
-
-* Por cada conexión, latencia (distribución a determinar)
-
-* Por cada conexión, bandwidth (distribución a determinar)
+## Topología de la red
 
 
 
-[1]  Nakamoto, Satoshi. Bitcoin: A Peer-to-Peer Electronic Cash System. https://bitcoin.org/bitcoin.pdf, 2008
+[1]  Eyal, Ittay, and Emin Gün Sirer. "Majority is not enough: Bitcoin mining is vulnerable". http://arxiv.org/abs/1311.0243 (2013)
 
-[2]  bitcoind peer discovery algorithms. https://en.bitcoin.it/wiki/Satoshi_Client_Node_Discovery
-
-[3]  https://getaddr.bitnodes.io/
-
-[4]  El máximo (default) es 125: bitcoind --help | grep maxconnections.
+[2]  Lerner, Sergio. “The Bitcoin Freeze on Transaction Attack (FRONT)”. http://sourceforge.net/p/bitcoin/mailman/message/32899645/ (2014)
 
