@@ -99,6 +99,24 @@ class BlockReceived(Event):
             'accepted' if self.accepted else 'ignored' if self.ignored else 'rejected'
         )
 
+class Events(object):
+    def __init__(self):
+        self.events = []
+        self.lastPop = None
+
+    def push(self, event):
+        assert not self.lastPop or event.timestamp >= self.lastPop.timestamp
+        heapq.heappush(self.events, event)
+
+    def pop(self):
+        event = heapq.heappop(self.events)
+        assert not self.lastPop or event.timestamp >= self.lastPop.timestamp
+        self.lastPop = event
+        return event
+
+    def empty(self):
+        return len(self.events) == 0
+
 def makeTimestamp(timestamp):
     ts = int(timestamp * 1000)
     return '%02d:%02d:%02d.%03d' % (ts / 3600000, (ts / 60000) % 60, (ts / 1000) % 60, ts % 1000)
@@ -151,25 +169,6 @@ def drawNetwork(network):
                 if node.id < connection.peer.id:
                     f.write('\tnode%d -- node%d;' % (node.id, connection.peer.id))
         f.write('}')
-
-class Events(object):
-    def __init__(self):
-        self.events = []
-        self.lastPop = None
-
-    def push(self, event):
-        assert not self.lastPop or event.timestamp >= self.lastPop.timestamp
-        heapq.heappush(self.events, event)
-
-    def pop(self):
-        event = heapq.heappop(self.events)
-        assert not self.lastPop or event.timestamp >= self.lastPop.timestamp
-        self.lastPop = event
-        return event
-
-    def empty(self):
-        return len(self.events) == 0
-
 
 if __name__ == "__main__":
 
