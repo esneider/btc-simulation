@@ -3,17 +3,19 @@ import random
 import math
 import heapq
 
-EXPECTED_MS_BETWEEN_BLOCKS = 600 * MS_PER_SECONDS
 NUM_NODES = 10
-CONNECTIONS_PER_NODE = 3
+CONNECTIONS_PER_NODE = 4
+TIME_BETWEEN_BLOCKS_SECS = 600
 MAX_BLOCK_SIZE_KB = 1000
 MAX_BANDWIDTH_KBPS = 10000
-MAX_DELAY_MS = 15
-MS_PER_SECONDS = 1000
+MAX_DELAY_SECS = 0.015
 
 class Node(object):
+    id = 0
     def __init__(self, bandwidth):
         # self.latency = latency
+        Node.id += 1
+        self.id = Node.id
         self.bandwidth = bandwidth
         self.connections = []
         self.head = None
@@ -32,52 +34,74 @@ class Network(object):
 class Block(object):
     id = 0
     def  __init__(self, timestamp, miner):
-        id = id + 1
-        self.id = id
+        Block.id += 1
+        self.id = Block.id
         self.timestamp = timestamp
         self.miner = miner
         self.parent = miner.head
-        self.height = parent.height + 1 if parent else 0
+        self.height = self.parent.height + 1 if self.parent else 0
 
 class Event(object):
     def __init__(self, timestamp):
         self.timestamp = timestamp
-    def __lt__(self, other):
+    def __cmp__(self, other):
         return self.timestamp - other.timestamp
 
 class BlockMined(Event):
     def __init__(self, timestamp, miner):
         super(BlockMined, self).__init__(timestamp)
         self.miner = miner
+        self.ignored = False
 
     def apply(self, network):
         events = []
-        block = Block(self.timestamp, self.miner)
+        self.block = Block(self.timestamp, self.miner)
+        self.miner.head = self.block
         events.append(createBlockEvent(network, self.timestamp))
-        events += createPropagationEvents(self.miner, block)
+        events += createPropagationEvents(self.miner, self.block)
         return events
+
+    def log(self):
+        return '[%s] node %d mined block %d at height %d' % (
+            makeTimestamp(self.timestamp), self.miner.id, self.block.id, self.block.height
+        )
 
 class BlockReceived(Event):
     def __init__(self, timestamp, receiver, block):
         super(BlockReceived, self).__init__(timestamp)
         self.receiver = receiver
         self.block = block
+        self.accepted = False
+        self.ignored = False
 
-    def apply(self):
-        if self.receiver.head.height >= block.height:
+    def apply(self, network):
+        if self.receiver.head and self.receiver.head.height >= self.block.height:
+            # TODO: Make this look at same height
+            self.ignored = self.receiver.head.id == self.block.id
             return []
-        self.receiver.head = block
-        return createPropagationEvents(self.receiver, block)
+        self.accepted = True
+        self.receiver.head = self.block
+        return createPropagationEvents(self.receiver, self.block)
+
+    def log(self):
+        return '[%s] node %d received block %d and %s it' % (
+            makeTimestamp(self.timestamp),
+            self.receiver.id, self.block.id,
+            'accepted' if self.accepted else 'ignored' if self.ignored else 'rejected'
+        )
+
+def makeTimestamp(timestamp):
+    ts = int(timestamp * 1000)
+    return '%02d:%02d:%02d.%03d' % (ts / 3600000, (ts / 60000) % 60, (ts / 1000) % 60, ts % 1000)
 
 def randomBandwidth():
     return random.random() * MAX_BANDWIDTH_KBPS
 
 def randomDelay():
-    return random.random() * MAX_DELAY_MS
+    return random.random() * MAX_DELAY_SECS
 
 def randomTimeBetweenBlocks(time):
     return random.random() * time
-
 
 def createRandomNetwork(numNodes, numConnections):
     network = Network()
@@ -92,28 +116,34 @@ def createRandomNetwork(numNodes, numConnections):
     return network
 
 def createBlockEvent(network, currentTime):
-    time = currentTime + randomTimeBetweenBlocks(EXPECTED_MS_BETWEEN_BLOCKS);
+    time = currentTime + randomTimeBetweenBlocks(TIME_BETWEEN_BLOCKS_SECS);
     return BlockMined(time, network.randomNode())
 
 def createPropagationEvents(sender, block):
+    if block == None:
+        raise Error('Block is null')
     events = []
     for connection in sender.connections:
         receiver = connection.peer
         bandwidth = min(receiver.bandwidth, sender.bandwidth)
-        time = block.timestamp + connection.delay + bandwidth * MAX_BLOCK_SIZE_KB
+        time = block.timestamp + connection.delay + MAX_BLOCK_SIZE_KB / bandwidth
         # TODO: take into consideration node's total bandwith
         events.append(BlockReceived(time, receiver, block))
     return events
-
 
 if __name__ == "__main__":
 
     events = []
     network = createRandomNetwork(NUM_NODES, CONNECTIONS_PER_NODE)
 
-    heapq.heappush(createBlockEvent(network, 0))
+    heapq.heappush(events, createBlockEvent(network, 0))
     while len(events):
-        results = heapq.heappop(events).apply(network)
+        event = heapq.heappop(events)
+        results = event.apply(network)
+        if not event.ignored:
+            print event.log()
+        if type(event) == BlockMined:
+            raw_input()
         for event in results:
             heapq.heappush(events, event)
 
