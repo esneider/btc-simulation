@@ -1,0 +1,6 @@
+*.dot
+*~
+.DS_Store
+*.log
+*.sw[a-z]
+*.png
