@@ -1,6 +1,7 @@
 *.dot
-*~
-.DS_Store
+*.png
+*.pyc
 *.log
 *.sw[a-z]
-*.png
+*~
+.DS_Store

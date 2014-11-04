@@ -2,13 +2,22 @@
 import random
 import math
 import heapq
+import os
 
-NUM_NODES = 30
-CONNECTIONS_PER_NODE = 6
-TIME_BETWEEN_BLOCKS_SECS = 600
+# Simulation parameters
+
+NUM_NODES = 20
 MAX_BLOCK_SIZE_KB = 1000
-MAX_BANDWIDTH_KBPS = 10000
-MAX_DELAY_SECS = 0.200
+CONNECTIONS_PER_NODE = 4
+MEAN_TIME_BETWEEN_BLOCKS_SECS = 45
+
+# Network connection properties
+
+MEAN_BANDWIDTH_KBPS = 100
+STD_BANDWIDTH_KBPS = 30
+
+MEAN_DELAY_SECS = 0.500
+STD_DELAY_SECS = 0.100
 
 class Node(object):
     id = 0
@@ -30,6 +39,10 @@ class Network(object):
         self.nodes = []
     def randomNode(self):
         return random.choice(self.nodes)
+
+class Ledger(object):
+    def __init__(self):
+        self.blocks = []
 
 class Block(object):
     id = 0
@@ -62,10 +75,11 @@ class BlockMined(Event):
         self.ignored = False
         self.accepted = True
 
-    def apply(self, network):
+    def apply(self, network, ledger):
         events = []
         self.block = Block(self.timestamp, self.miner)
         self.miner.head = self.block
+        ledger.blocks.append(self.block)
         events.append(createBlockEvent(network, self.timestamp))
         events += createPropagationEvents(self.miner, self.block, self.block.timestamp)
         return events
@@ -83,7 +97,7 @@ class BlockReceived(Event):
         self.accepted = False
         self.ignored = False
 
-    def apply(self, network):
+    def apply(self, network, ledger):
         if self.receiver.head and self.receiver.head.height >= self.block.height:
             # TODO: Make this look at same height
             self.ignored = self.receiver.head.id == self.block.id
@@ -122,13 +136,16 @@ def makeTimestamp(timestamp):
     return '%02d:%02d:%02d.%03d' % (ts / 3600000, (ts / 60000) % 60, (ts / 1000) % 60, ts % 1000)
 
 def randomBandwidth():
-    return random.random() * MAX_BANDWIDTH_KBPS
+    norm = random.normalvariate(MEAN_BANDWIDTH_KBPS, STD_BANDWIDTH_KBPS)
+    return norm if norm > 0 else 1
 
 def randomDelay():
-    return random.random() * MAX_DELAY_SECS
+    norm = random.normalvariate(MEAN_DELAY_SECS, STD_DELAY_SECS)
+    return norm if norm > 0 else 0.010
 
-def randomTimeBetweenBlocks(time):
-    return random.random() * time
+def randomTimeBetweenBlocks():
+    norm = random.expovariate(1./MEAN_TIME_BETWEEN_BLOCKS_SECS)
+    return norm if norm > 0 else 0.1
 
 def createRandomNetwork(numNodes, numConnections):
     network = Network()
@@ -146,7 +163,7 @@ def createRandomNetwork(numNodes, numConnections):
     return network
 
 def createBlockEvent(network, currentTime):
-    time = currentTime + randomTimeBetweenBlocks(TIME_BETWEEN_BLOCKS_SECS);
+    time = currentTime + randomTimeBetweenBlocks();
     return BlockMined(time, network.randomNode())
 
 def createPropagationEvents(sender, block, timestamp):
@@ -159,31 +176,62 @@ def createPropagationEvents(sender, block, timestamp):
         events.append(BlockReceived(time, receiver, block))
     return events
 
+def blockColor(block):
+    colors = ['aquamarine', 'coral', 'green', 'darkorchid1', 'gold', 'snow3', 'deeppink']
+    return colors[block.id % 7 if block else 0]
+
 def drawNetwork(network):
     with open('network.dot', 'w') as f:
-        f.write('graph network {')
+        f.write('graph network {\n')
         for node in network.nodes:
-            f.write('\tnode%d [label="%d"];' % (node.id, node.id))
+            f.write('\tnode%d [label="%d (%s)" fillcolor="%s" style="filled"];\n' % (
+                node.id,
+                node.id,
+                str(node.head.height) if node.head else '-',
+                blockColor(node.head)
+            ))
         for node in network.nodes:
             for connection in node.connections:
                 if node.id < connection.peer.id:
-                    f.write('\tnode%d -- node%d;' % (node.id, connection.peer.id))
+                    f.write('\tnode%d -- node%d;\n' % (node.id, connection.peer.id))
+        f.write('}')
+
+def drawLedger(ledger):
+    with open('ledger.dot', 'w') as f:
+        f.write('digraph ledger {\n')
+        for block in ledger.blocks:
+            f.write('\tblock%d [label="%d (%d)" fillcolor="%s" style="filled" shape="box"];\n' % (
+                block.id,
+                block.id,
+                block.height,
+                blockColor(block)
+            ))
+        for block in ledger.blocks:
+            if block.parent:
+                f.write('\tblock%d -> block%d;\n' % (block.id, block.parent.id))
         f.write('}')
 
 if __name__ == "__main__":
 
     events = Events()
+    ledger = Ledger()
     network = createRandomNetwork(NUM_NODES, CONNECTIONS_PER_NODE)
+
+    drawLedger(ledger)
     drawNetwork(network)
+    os.system('make dot open')
 
     events.push(createBlockEvent(network, 0))
     while not events.empty():
         event = events.pop()
         # print event.timestamp
-        results = event.apply(network)
+        results = event.apply(network, ledger)
         if not event.ignored:
             print event.log()
-            if not event.accepted:
+            if event.accepted:
+                drawLedger(ledger)
+                drawNetwork(network)
+                os.system('make dot refresh')
                 raw_input()
         # if type(event) == BlockMined:
         #     raw_input()
