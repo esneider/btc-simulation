@@ -10,7 +10,7 @@ También comparte aspectos con el oro, al ser un recurso finito y escaso. Los bi
 
 Este conjunto de propiedades únicas introduce varias aplicaciones innovadores como propiedades inteligentes, micropagos, etc.
 
-## Cómo funciona Bitcoin
+## Cómo funciona la red de Bitcoin
 
 Tanto la generación de nuevos bitcoins como el procesamiento y verificación de transacciones es llevado a cabo por la red de Bitcoin. Esta red mantiene colectivamente un registro contable (**ledger**) con el balance de todas las cuentas del sistema.
 
@@ -46,7 +46,7 @@ Cuando un minero logra construir un bloque válido, lo envía a todos sus vecino
 
 El minado de bitcoins es un proceso difícil: para que un bloque sea válido, el minero debe encontrar un valor del nonce que cumpla con cierta propiedad matemática. La dificultad de este problema matemático se ajusta automáticamente para que, en promedio, se cree un bloque cada 10 minutos.
 
-De manera similar al oro, la única manera de crear bitcoins es minandolos. Los mineros tienen derecho a agregar una transacción especial en cada bloque que minen. Esta transacción, llamada **coinbase**, crea una cantidad prefijada de bitcoins y los envía a la cuenta del minero.
+De manera similar al oro, la única manera de crear bitcoins es minandolos. Los mineros tienen derecho a agregar una transacción especial en cada bloque que minen, llamada **coinbase**, que crea una cantidad prefijada de bitcoins y los envía a la cuenta del minero.
 
 ### Blockchain
 
@@ -82,5 +82,21 @@ Eventualmente alguna de las ramas será más larga y se resolverá la bifurcaci�
 
 [...] dos o más transacciones pueden intentar transferir el mismo dinero al mismo tiempo en nodos distintos. Esto es llamado **double spending attack**.
 
-## Topología de la red
+# Modelo de la red de Bitcoin
+
+Modelamos la red de Bitcoin como un grafo dirigido `G = (V,􏰋E)` en donde cada nodo `v` tiene una fracción `pᵥ ≥ 0` del poder computacional de la red.
+
+<p align="center">
+    <img src="http://latex.codecogs.com/png.latex?%5Cdpi%7B150%7D%20%5Csum_%7Bv%20%5C%2C%5Cin%20V%7Dp_v%20%3D%201"></img>
+</p>
+
+Cada nodo `v` de la red genera bloques mediante un proceso de Poisson, con una velocidad `pᵥ · λ`, y la red entera combinada genera bloques mediante un proceso de Poisson con velocidad `λ`.
+
+Cuando un bloque es generado por un nodo, es inmediatamente enviado a todos sus vecinos en la red, que continúan propagando el bloque a sus vecinos hasta que eventualmente todos los nodos lo hayan recibido. Cada arista `e ∈ E` tiene una latencia `lₑ`, que es el tiempo que tarda en transmitirse una unidad mínima de información por esa arista, y que cada nodo `v` tiene una velocidad de subida `sᵥ` y una velocidad de bajada `bᵥ`. Si `e` es la arista de `u` a `v`, entonces el tiempo de transmisión de un bloque `b` por la arista `e` es:
+
+<p align="center">
+    <img src="http://latex.codecogs.com/png.latex?%5Cdpi%7B150%7D%20t_e%28b%29%20%3D%20%5Cmin%5Cleft%28s_u%2C%20b_v%5Cright%29%20%5Ccdot%20%5Cleft%7Cb%5Cright%7C%20&plus;%20l_e"></img>
+</p>
+
+Donde `|b|` es el tamaño del bloque `b`.
 
