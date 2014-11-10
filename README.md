@@ -64,15 +64,19 @@ Al crear un bloque, un minero recibirá sus bitcoins minados sólo si este bloqu
 
 ### Bifurcaciones de la blockchain
 
-Los mensajes entre nodos de la red de Bitcoin se transmiten tan rápido como las conexiones de Internet entre ellos lo permiten. Como los bloques son encontrados independientemente de forma aleatoria por los nodos mineros, puede llegar a encontrarse un bloque mientras otro bloque en conflicto está siendo propagado por la red.
+Los mensajes entre nodos de la red de Bitcoin se transmiten tan rápido como las conexiones de Internet entre ellos lo permiten. Dado que el proceso de creación de bloques es aleatorio, puede llegar a encontrarse un bloque mientras otro bloque en conflicto está siendo propagado por la red.
 
 Como ambos bloques son válidos y tienen la misma altura, ambos son potenciales cabezas de la blockchain, y esta se **bifurca**: los nodos que hayan recibido antes el primer bloque, lo marcarán como cabeza de la blockchain, y el resto de los nodos tendrá como cabeza al último bloque. Tras este evento, diferentes nodos ven diferentes historias, y el sistema deja de ser consistente.
 
 ![](https://github.com/esneider/btc-simulation/raw/master/images/fork.png)
 
-En la imagen se puede apreciar el proceso recién mencionado. En la etapa 1, todos los nodos tienen la misma cabeza `P`. En la etapa 2, el nodo `a` construye un nuevo bloque `A` que tiene como padre a `P`. En la etapa 3, mientras el bloque `A` se propaga por la red, el nodo `b` construye un nuevo bloque `B` que tiene como padre a `P`, ya que el nodo `b` aún no está enterado de la existencia del bloque `A`. Finalmente, en la etapa 4, los nodos quedan particionados en dos subconjuntos, los que tienen a `A` como cabeza y los que tienen a `B` como cabeza.
+En la imagen se puede apreciar el proceso recién mencionado. **(1)** Todos los nodos tienen la misma cabeza `P`. **(2)** El nodo `a` construye un nuevo bloque `A` que tiene como padre a `P`. **(3)** Mientras el bloque `A` se propaga por la red, el nodo `b` construye un nuevo bloque `B` que tiene como padre a `P`, ya que el nodo `b` aún no está enterado de la existencia del bloque `A`. **(4)** Finalmente los nodos quedan particionados en dos subconjuntos, los que tienen a `A` como cabeza y los que tienen a `B` como cabeza.
 
-La bifurcación puede prolongarse si ambas particiones de la red siguen encontrando bloques que construyan sobre sus respectivas cabezas de blockchain, formando dos ramas. Pero eventualmente alguna de las ramas será más larga y se resolverá la bifurcación, ya que cuando un nodo recibe un nuevo bloque y su altura es mayor a todos los bloques previos, lo tomará como la nueva cabeza de la blockchain. Por este motivo, se dice que Bitcoin es un sistema con **consistencia eventual**.
+Tras una bifurcación, ambas particiones competirán para encontrar el próximo bloque y decidir que versión de la historia será la definitiva. Si se encuentra un bloque en una partición y antes de distribuirse por toda la red se encuentra otro bloque en la partición opuesta, la bifurcación se prolongará, formando dos ramas.
+
+![](https://github.com/esneider/btc-simulation/raw/master/images/fork_resolution.png)
+
+Eventualmente alguna de las ramas será más larga y se resolverá la bifurcación, ya que cuando un nodo recibe un nuevo bloque cuya altura es mayor a la de todos los bloques previos, lo tomará como la nueva cabeza de la blockchain. Por este motivo se dice que Bitcoin es un sistema con **consistencia eventual**.
 
 ### Double spending attack
 
