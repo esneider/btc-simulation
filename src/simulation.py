@@ -2,30 +2,27 @@
 import random
 import math
 import heapq
+import argparse
 import os
-
-# Simulation parameters
-
-NUM_NODES = 20
-MAX_BLOCK_SIZE_KB = 1000
-CONNECTIONS_PER_NODE = 4
-MEAN_TIME_BETWEEN_BLOCKS_SECS = 45
 
 # Network connection properties
 
-MEAN_BANDWIDTH_KBPS = 100
-STD_BANDWIDTH_KBPS = 30
+MEAN_DOWNLOAD_KBPS = 100
+STD_DOWNLOAD_KBPS = 30
+
+MEAN_UPLOAD_KBPS = 100
+STD_UPLOAD_KBPS = 30
 
 MEAN_DELAY_SECS = 0.500
 STD_DELAY_SECS = 0.100
 
 class Node(object):
     id = 0
-    def __init__(self, bandwidth):
-        # self.latency = latency
+    def __init__(self, download, upload):
         Node.id += 1
         self.id = Node.id
-        self.bandwidth = bandwidth
+        self.download = download
+        self.upload = upload
         self.connections = []
         self.head = None
 
@@ -46,12 +43,13 @@ class Ledger(object):
 
 class Block(object):
     id = 0
-    def  __init__(self, timestamp, miner):
+    def __init__(self, timestamp, miner, size):
         Block.id += 1
         self.id = Block.id
         self.timestamp = timestamp
         self.miner = miner
         self.parent = miner.head
+        self.size = size
         self.height = self.parent.height + 1 if self.parent else 0
         if self.parent:
             assert self.timestamp > self.parent.timestamp
@@ -69,18 +67,20 @@ class Event(object):
         return '(%s created at %.3f)' % (type(self).__name__, self.timestamp)
 
 class BlockMined(Event):
-    def __init__(self, timestamp, miner):
+    def __init__(self, timestamp, miner, size, velocity):
         super(BlockMined, self).__init__(timestamp)
         self.miner = miner
-        self.ignored = False
-        self.accepted = True
+        self.size = size
+        self.velocity = velocity
+        self.status = 'mined'
 
     def apply(self, network, ledger):
         events = []
-        self.block = Block(self.timestamp, self.miner)
+        self.block = Block(self.timestamp, self.miner, self.size)
         self.miner.head = self.block
         ledger.blocks.append(self.block)
-        events.append(createBlockEvent(network, self.timestamp))
+        time = self.timestamp + randomTimeBetweenBlocks(self.velocity);
+        events.append(BlockMined(time, network.randomNode(), self.size, self.velocity))
         events += createPropagationEvents(self.miner, self.block, self.block.timestamp)
         return events
 
@@ -94,23 +94,20 @@ class BlockReceived(Event):
         super(BlockReceived, self).__init__(timestamp)
         self.receiver = receiver
         self.block = block
-        self.accepted = False
-        self.ignored = False
 
     def apply(self, network, ledger):
         if self.receiver.head and self.receiver.head.height >= self.block.height:
             # TODO: Make this look at same height
-            self.ignored = self.receiver.head.id == self.block.id
+            self.status = 'ignored' if self.receiver.head.id == self.block.id else 'rejected'
             return []
-        self.accepted = True
+        self.status = 'accepted'
         self.receiver.head = self.block
         return createPropagationEvents(self.receiver, self.block, self.timestamp)
 
     def log(self):
         return '[%s] node %d received block %d and %s it' % (
             makeTimestamp(self.timestamp),
-            self.receiver.id, self.block.id,
-            'accepted' if self.accepted else 'ignored' if self.ignored else 'rejected'
+            self.receiver.id, self.block.id, self.status
         )
 
 class Events(object):
@@ -135,23 +132,27 @@ def makeTimestamp(timestamp):
     ts = int(timestamp * 1000)
     return '%02d:%02d:%02d.%03d' % (ts / 3600000, (ts / 60000) % 60, (ts / 1000) % 60, ts % 1000)
 
-def randomBandwidth():
-    norm = random.normalvariate(MEAN_BANDWIDTH_KBPS, STD_BANDWIDTH_KBPS)
-    return norm if norm > 0 else 1
+def randomDownloadSpeed():
+    norm = random.normalvariate(MEAN_DOWNLOAD_KBPS, STD_DOWNLOAD_KBPS)
+    return norm if norm > 1 else 1
+
+def randomUploadSpeed():
+    norm = random.normalvariate(MEAN_UPLOAD_KBPS, STD_UPLOAD_KBPS)
+    return norm if norm > 1 else 1
 
 def randomDelay():
     norm = random.normalvariate(MEAN_DELAY_SECS, STD_DELAY_SECS)
-    return norm if norm > 0 else 0.010
+    return norm if norm > 0.010 else 0.010
 
-def randomTimeBetweenBlocks():
-    norm = random.expovariate(1./MEAN_TIME_BETWEEN_BLOCKS_SECS)
-    return norm if norm > 0 else 0.1
+def randomTimeBetweenBlocks(velocity):
+    norm = random.expovariate(velocity)
+    return norm if norm > 0.1 else 0.1
 
 def createRandomNetwork(numNodes, numConnections):
     network = Network()
 
     for _ in xrange(numNodes):
-        network.nodes.append(Node(randomBandwidth()))
+        network.nodes.append(Node(randomDownloadSpeed(), randomUploadSpeed()))
 
     for node in network.nodes:
         for _ in xrange(numConnections/2):
@@ -162,16 +163,13 @@ def createRandomNetwork(numNodes, numConnections):
 
     return network
 
-def createBlockEvent(network, currentTime):
-    time = currentTime + randomTimeBetweenBlocks();
-    return BlockMined(time, network.randomNode())
-
 def createPropagationEvents(sender, block, timestamp):
     events = []
+    # random.shuffle(sender.connections)
     for connection in sender.connections:
         receiver = connection.peer
-        bandwidth = min(receiver.bandwidth, sender.bandwidth)
-        time = timestamp + connection.delay + MAX_BLOCK_SIZE_KB / bandwidth
+        bandwidth = min(receiver.download, sender.upload)
+        time = timestamp + connection.delay + block.size / bandwidth
         # TODO: take into consideration node's total bandwith
         events.append(BlockReceived(time, receiver, block))
     return events
@@ -211,32 +209,69 @@ def drawLedger(ledger):
                 f.write('\tblock%d -> block%d;\n' % (block.id, block.parent.id))
         f.write('}')
 
+def parseArguments():
+    parser = argparse.ArgumentParser(
+        description='Run a simultion of the Bitcoin Network.',
+        add_help=False
+    )
+
+    param = parser.add_argument_group('Block parameters')
+    param.add_argument(
+        '-s', default=1024, type=int, dest='size',
+        help='maximum block size in KB', metavar='SIZE'
+    )
+    param.add_argument(
+        '-t', default=45, type=int, dest='time',
+        help='mean time between blocks in seconds', metavar='TIME'
+    )
+
+    topo = parser.add_argument_group('Network topology')
+    topo.add_argument(
+        '-n', default=20, type=int, dest='nodes',
+        help='number of nodes in the network', metavar='NODES'
+    )
+    topo.add_argument(
+        '-c', default=4, type=int, dest='connections',
+        help='average number of connections per node', metavar='CONN'
+    )
+
+    out = parser.add_argument_group('Output')
+    out.add_argument(
+        '-v', action='store_true', dest='verbose', help='be verbose'
+    )
+    out.add_argument(
+        '-g', action='store_true', dest='gui', help='show dot "gui"'
+    )
+    out.add_argument(
+        '-h', action='help', help='show this help message and exit'
+    )
+
+    return parser.parse_args()
+
 if __name__ == "__main__":
 
+    args = parseArguments()
     events = Events()
     ledger = Ledger()
-    network = createRandomNetwork(NUM_NODES, CONNECTIONS_PER_NODE)
+    network = createRandomNetwork(args.nodes, args.connections)
 
-    drawLedger(ledger)
-    drawNetwork(network)
-    os.system('make dot open')
+    if args.gui:
+        drawLedger(ledger)
+        drawNetwork(network)
+        os.system('make dot open')
 
-    events.push(createBlockEvent(network, 0))
+    events.push(BlockMined(0, network.randomNode(), args.size, 1.0 / args.time))
+
     while not events.empty():
         event = events.pop()
-        # print event.timestamp
-        results = event.apply(network, ledger)
-        if not event.ignored:
+        for e in event.apply(network, ledger):
+            events.push(e)
+
+        if args.verbose and event.status != 'ignored':
             print event.log()
-            if event.accepted:
-                drawLedger(ledger)
-                drawNetwork(network)
-                os.system('make dot refresh')
-                raw_input()
-        # if type(event) == BlockMined:
-        #     raw_input()
-        for event in results:
-            events.push(event)
 
-    print network
-
+        if args.gui and event.status in ('accepted', 'mined'):
+            drawLedger(ledger)
+            drawNetwork(network)
+            os.system('make dot refresh')
+            raw_input()
