@@ -3,6 +3,8 @@
 *.csv
 *.pyc
 *.log
+*.txt
 *.sw[a-z]
 *~
 .DS_Store
+profile

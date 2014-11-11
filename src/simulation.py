@@ -4,18 +4,19 @@ import random
 import math
 import heapq
 import argparse
+import sys
 import os
 
 # Network connection properties
 
-MEAN_DOWNLOAD_KBPS = 100
-STD_DOWNLOAD_KBPS = 30
+MEAN_DOWNLOAD_KBPS = 2000
+STD_DOWNLOAD_KBPS = 700
 
-MEAN_UPLOAD_KBPS = 100
-STD_UPLOAD_KBPS = 30
+MEAN_UPLOAD_KBPS = 1000
+STD_UPLOAD_KBPS = 500
 
-MEAN_DELAY_SECS = 0.500
-STD_DELAY_SECS = 0.100
+MEAN_DELAY_SECS = 0.080
+STD_DELAY_SECS = 0.030
 
 class Node(object):
     id = 0
@@ -136,19 +137,19 @@ class Events(object):
 
 def randomDownloadSpeed():
     norm = random.normalvariate(MEAN_DOWNLOAD_KBPS, STD_DOWNLOAD_KBPS)
-    return norm if norm > 1 else 1
+    return norm if norm > 10 else 10
 
 def randomUploadSpeed():
     norm = random.normalvariate(MEAN_UPLOAD_KBPS, STD_UPLOAD_KBPS)
-    return norm if norm > 1 else 1
+    return norm if norm > 10 else 10
 
 def randomDelay():
     norm = random.normalvariate(MEAN_DELAY_SECS, STD_DELAY_SECS)
-    return norm if norm > 0.010 else 0.010
+    return norm if norm > 0.005 else 0.005
 
 def randomTimeBetweenBlocks(velocity):
     norm = random.expovariate(velocity)
-    return norm if norm > 0.1 else 0.1
+    return norm if norm > 0.01 else 0.01
 
 def randomNetwork(nodes, connections):
     network = Network()
@@ -214,14 +215,12 @@ def drawLedger(ledger):
 def parseArguments():
     parser = argparse.ArgumentParser(
         description='Run a simulation of the Bitcoin Network.',
-        add_help=False
+        add_help=False,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
     sim = parser.add_argument_group('Simulation parameters')
-    sim.add_argument(
-        '-d', default=7, type=int, dest='days',
-        help='days of simulation', metavar='DAYS'
-    )
+    sim.add_argument('hours', type=int, help='hours of simulation')
 
     param = parser.add_argument_group('Block parameters')
     param.add_argument(
@@ -268,13 +267,14 @@ if __name__ == "__main__":
         drawNetwork(network)
         os.system('make dot open')
 
+    time = 0
     events = Events()
     events.push(BlockMined(0, network.randomNode(), args.size, 1.0 / args.time))
 
     while not events.empty():
         event = events.pop()
 
-        if event.timestamp > args.days * 3600 * 24:
+        if event.timestamp > args.hours * 3600:
             break
 
         for e in event.apply(network, ledger):
@@ -289,10 +289,18 @@ if __name__ == "__main__":
             os.system('make dot refresh')
             raw_input()
 
+        if not args.verbose and not args.gui and event.timestamp > time:
+            time = event.timestamp + 10
+            sys.stdout.write("\rblocks: %d height: %d time: %s" % (
+                len(ledger.blocks), len(ledger.growth), event.time())
+            )
+            sys.stdout.flush()
+
     x = numpy.array([ts   for h, ts in ledger.growth])
     y = numpy.array([h/ts for h, ts in ledger.growth])
 
     p, c = numpy.polyfit(x, y, 1, cov=True)
     e = numpy.sqrt(numpy.diag(c))
 
-    print p, e
+    print
+    print len(ledger.growth), p[0], p[1], e[0], e[1]
