@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import numpy
 import random
 import math
 import heapq
@@ -40,6 +41,12 @@ class Network(object):
 class Ledger(object):
     def __init__(self):
         self.blocks = []
+        self.growth = []
+
+    def append(self, block):
+        self.blocks.append(block)
+        if len(self.growth) < block.height:
+            self.growth.append((block.height, block.timestamp))
 
 class Block(object):
     id = 0
@@ -77,13 +84,12 @@ class BlockMined(Event):
         self.velocity = velocity
 
     def apply(self, network, ledger):
-        events = []
         self.block = Block(self.timestamp, self.miner, self.size)
+        ledger.append(self.block)
         self.miner.head = self.block
-        ledger.blocks.append(self.block)
+        events = createPropagationEvents(self.miner, self.block, self.block.timestamp)
         time = self.timestamp + randomTimeBetweenBlocks(self.velocity);
         events.append(BlockMined(time, network.randomNode(), self.size, self.velocity))
-        events += createPropagationEvents(self.miner, self.block, self.block.timestamp)
         return events
 
     def __str__(self):
@@ -207,8 +213,14 @@ def drawLedger(ledger):
 
 def parseArguments():
     parser = argparse.ArgumentParser(
-        description='Run a simultion of the Bitcoin Network.',
+        description='Run a simulation of the Bitcoin Network.',
         add_help=False
+    )
+
+    sim = parser.add_argument_group('Simulation parameters')
+    sim.add_argument(
+        '-d', default=7, type=int, dest='days',
+        help='days of simulation', metavar='DAYS'
     )
 
     param = parser.add_argument_group('Block parameters')
@@ -261,6 +273,10 @@ if __name__ == "__main__":
 
     while not events.empty():
         event = events.pop()
+
+        if event.timestamp > args.days * 3600 * 24:
+            break
+
         for e in event.apply(network, ledger):
             events.push(e)
 
@@ -272,3 +288,11 @@ if __name__ == "__main__":
             drawNetwork(network)
             os.system('make dot refresh')
             raw_input()
+
+    x = numpy.array([ts   for h, ts in ledger.growth])
+    y = numpy.array([h/ts for h, ts in ledger.growth])
+
+    p, c = numpy.polyfit(x, y, 1, cov=True)
+    e = numpy.sqrt(numpy.diag(c))
+
+    print p, e
