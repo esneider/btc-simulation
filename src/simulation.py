@@ -55,24 +55,26 @@ class Block(object):
             assert self.timestamp > self.parent.timestamp
 
 class Event(object):
-    def __init__(self, timestamp):
+    def __init__(self, timestamp, status):
         self.timestamp = timestamp
+        self.status = status
 
     def __cmp__(self, other):
         if self.timestamp == other.timestamp:
             return 0
         return 1 if self.timestamp > other.timestamp else -1
 
-    def __str__(self):
-        return '(%s created at %.3f)' % (type(self).__name__, self.timestamp)
+    def time(self):
+        ts = int(self.timestamp)
+        ms = (self.timestamp - ts) * 1000
+        return '%02d:%02d:%02d.%03d' % (ts / 3600, (ts / 60) % 60, ts % 60, ms)
 
 class BlockMined(Event):
     def __init__(self, timestamp, miner, size, velocity):
-        super(BlockMined, self).__init__(timestamp)
+        super(BlockMined, self).__init__(timestamp, 'mined')
         self.miner = miner
         self.size = size
         self.velocity = velocity
-        self.status = 'mined'
 
     def apply(self, network, ledger):
         events = []
@@ -84,14 +86,14 @@ class BlockMined(Event):
         events += createPropagationEvents(self.miner, self.block, self.block.timestamp)
         return events
 
-    def log(self):
+    def __str__(self):
         return '[%s] node %d mined block %d at height %d' % (
-            makeTimestamp(self.timestamp), self.miner.id, self.block.id, self.block.height
+            self.time(), self.miner.id, self.block.id, self.block.height
         )
 
 class BlockReceived(Event):
     def __init__(self, timestamp, receiver, block):
-        super(BlockReceived, self).__init__(timestamp)
+        super(BlockReceived, self).__init__(timestamp, 'accepted')
         self.receiver = receiver
         self.block = block
 
@@ -100,14 +102,12 @@ class BlockReceived(Event):
             # TODO: Make this look at same height
             self.status = 'ignored' if self.receiver.head.id == self.block.id else 'rejected'
             return []
-        self.status = 'accepted'
         self.receiver.head = self.block
         return createPropagationEvents(self.receiver, self.block, self.timestamp)
 
-    def log(self):
-        return '[%s] node %d received block %d and %s it' % (
-            makeTimestamp(self.timestamp),
-            self.receiver.id, self.block.id, self.status
+    def __str__(self):
+        return '[%s] node %d %s block %d at height %d' % (
+            self.time(), self.receiver.id, self.status, self.block.id, self.block.height
         )
 
 class Events(object):
@@ -128,10 +128,6 @@ class Events(object):
     def empty(self):
         return len(self.events) == 0
 
-def makeTimestamp(timestamp):
-    ts = int(timestamp * 1000)
-    return '%02d:%02d:%02d.%03d' % (ts / 3600000, (ts / 60000) % 60, (ts / 1000) % 60, ts % 1000)
-
 def randomDownloadSpeed():
     norm = random.normalvariate(MEAN_DOWNLOAD_KBPS, STD_DOWNLOAD_KBPS)
     return norm if norm > 1 else 1
@@ -148,14 +144,14 @@ def randomTimeBetweenBlocks(velocity):
     norm = random.expovariate(velocity)
     return norm if norm > 0.1 else 0.1
 
-def createRandomNetwork(numNodes, numConnections):
+def randomNetwork(nodes, connections):
     network = Network()
 
-    for _ in xrange(numNodes):
+    for _ in xrange(nodes):
         network.nodes.append(Node(randomDownloadSpeed(), randomUploadSpeed()))
 
     for node in network.nodes:
-        for _ in xrange(numConnections/2):
+        for _ in xrange(connections/2):
             peer = network.randomNode()
             delay = randomDelay()
             node.connections.append(Connection(peer, delay))
@@ -251,15 +247,16 @@ def parseArguments():
 if __name__ == "__main__":
 
     args = parseArguments()
-    events = Events()
+
     ledger = Ledger()
-    network = createRandomNetwork(args.nodes, args.connections)
+    network = randomNetwork(args.nodes, args.connections)
 
     if args.gui:
         drawLedger(ledger)
         drawNetwork(network)
         os.system('make dot open')
 
+    events = Events()
     events.push(BlockMined(0, network.randomNode(), args.size, 1.0 / args.time))
 
     while not events.empty():
@@ -268,7 +265,7 @@ if __name__ == "__main__":
             events.push(e)
 
         if args.verbose and event.status != 'ignored':
-            print event.log()
+            print event
 
         if args.gui and event.status in ('accepted', 'mined'):
             drawLedger(ledger)
