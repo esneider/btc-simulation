@@ -1,7 +1,7 @@
 run:
-	time python simulation.py -s348 -t600 -n6735 -c30 1500
+	time python simulation.py -s348 -t600 -n673 -c15 1500
 test:
-	time python simulation.py -s348 -t600 -n6735 -c30 1
+	time python simulation.py -s348 -t600 -n673 -c15 1
 profile:
 	time python -m cProfile -o profile simulation.py -s348 -t600 -n6735 -c30 1
 review:

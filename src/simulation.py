@@ -18,6 +18,10 @@ STD_UPLOAD_KBPS = 500
 MEAN_DELAY_SECS = 0.080
 STD_DELAY_SECS = 0.030
 
+# Bitcoin protocol properties
+
+MEAN_TRANSACTION_KB = 0.5
+
 class Node(object):
     id = 0
     def __init__(self, download, upload):
@@ -250,6 +254,10 @@ def parseArguments():
         '-g', action='store_true', dest='gui', help='show dot "gui"'
     )
     out.add_argument(
+        '-o', type=argparse.FileType('w'), default=sys.stdout, dest='outfile',
+        help='output file', metavar='FILE'
+    )
+    out.add_argument(
         '-h', action='help', help='show this help message and exit'
     )
 
@@ -303,4 +311,11 @@ if __name__ == "__main__":
     e = numpy.sqrt(numpy.diag(c))
 
     print
-    print len(ledger.growth), p[0], p[1], e[0], e[1]
+
+    args.outfile.write('{');
+    args.outfile.write('"alpha_mean": %f, "alpha_std": %f,' % (p[0], e[0]))
+    args.outfile.write('"beta_mean": %f, "beta_std": %f,' % (p[1], e[1]))
+    args.outfile.write('"TPS": %f' % (p[1] * args.size / MEAN_TRANSACTION_KB))
+    args.outfile.write('}\n');
+    args.outfile.close()
+
