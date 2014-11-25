@@ -15,4 +15,4 @@ open:
 refresh:
 	osascript refresh.scpt
 clean:
-	rm -f *.{dot,png,pyc} profile
+	rm -f *.{dot,png,pyc,json} profile

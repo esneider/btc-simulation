@@ -312,10 +312,17 @@ if __name__ == "__main__":
 
     print
 
-    args.outfile.write('{');
-    args.outfile.write('"alpha_mean": %f, "alpha_std": %f,' % (p[0], e[0]))
-    args.outfile.write('"beta_mean": %f, "beta_std": %f,' % (p[1], e[1]))
-    args.outfile.write('"TPS": %f' % (p[1] * args.size / MEAN_TRANSACTION_KB))
+    args.outfile.write('{\n');
+    args.outfile.write(       '\t"size": %d,\n' % (args.size))
+    args.outfile.write(       '\t"time": %d,\n' % (args.time))
+    args.outfile.write(      '\t"nodes": %d,\n' % (args.nodes))
+    args.outfile.write('\t"connections": %d,\n' % (args.connections))
+    args.outfile.write(     '\t"lambda": %g,\n' % (1.0 / args.time))
+    args.outfile.write( '\t"alpha_mean": %g,\n' % (p[0]))
+    args.outfile.write(  '\t"alpha_std": %g,\n' % (e[0]))
+    args.outfile.write(  '\t"beta_mean": %g,\n' % (p[1]))
+    args.outfile.write(   '\t"beta_std": %g,\n' % (e[1]))
+    args.outfile.write(        '\t"tps": %g\n'  % (p[1] * args.size / MEAN_TRANSACTION_KB))
     args.outfile.write('}\n');
     args.outfile.close()
 

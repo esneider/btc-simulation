@@ -5,6 +5,7 @@
 *.log
 *.txt
 *.sw[a-z]
+*.json
 *~
 .DS_Store
 profile
